@@ -1,0 +1,72 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: postgres-miseventos
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - miseventos-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost -p 5432"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Backend API
+  backend:
+    build:
+      context: ./Backend/miseventos
+      dockerfile: Dockerfile
+    container_name: miseventos-backend
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      ENVIRONMENT: ${ENVIRONMENT}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./Backend/miseventos:/app
+      - /app/.venv
+    networks:
+      - miseventos-network
+    command: poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend
+  frontend:
+    build:
+      context: ./Frontend/miseventos
+      dockerfile: Dockerfile
+    container_name: miseventos-frontend
+    env_file: .env
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./Frontend/miseventos:/app
+      - /app/node_modules
+    networks:
+      - miseventos-network
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:
+
+networks:
+  miseventos-network:
+    driver: bridge
