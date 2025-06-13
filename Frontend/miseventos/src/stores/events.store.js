@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { apiService } from '../services/apiService';
+import { eventsService } from '../services/events.service';
 
-export const useEventsStore = create((set) => ({
+export const useEventsStore = create((set, get) => ({
   // State
   events: [],
   currentEvent: null,
@@ -14,19 +14,19 @@ export const useEventsStore = create((set) => ({
   },
   searchQuery: '',
 
-  // Actions with Business Logic
+  // Actions
   loadEvents: async (page = 1, search = '') => {
     try {
       set({ loading: true, error: null });
       
-      const response = await apiService.events.getAll(page, 10, search);
+      const response = await eventsService.getAll(page, 10, search);
       
       set({
-        events: response.events || response.data || [],
+        events: response.events,
         pagination: {
-          currentPage: response.current_page || page,
-          totalPages: response.total_pages || 1,
-          total: response.total || 0
+          currentPage: response.current_page,
+          totalPages: response.total_pages,
+          total: response.total
         },
         searchQuery: search,
         loading: false,
@@ -34,7 +34,7 @@ export const useEventsStore = create((set) => ({
 
       return { success: true };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Error al cargar eventos';
+      const errorMessage = error.response?.data?.detail || 'Error al cargar eventos';
       set({ 
         loading: false, 
         error: errorMessage 
@@ -47,7 +47,7 @@ export const useEventsStore = create((set) => ({
     try {
       set({ loading: true, error: null });
       
-      const event = await apiService.events.getById(id);
+      const event = await eventsService.getById(id);
       
       set({
         currentEvent: event,
@@ -56,7 +56,7 @@ export const useEventsStore = create((set) => ({
 
       return { success: true, data: event };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Error al cargar evento';
+      const errorMessage = error.response?.data?.detail || 'Error al cargar evento';
       set({ 
         loading: false, 
         error: errorMessage 
@@ -69,7 +69,7 @@ export const useEventsStore = create((set) => ({
     try {
       set({ loading: true, error: null });
       
-      const newEvent = await apiService.events.create(eventData);
+      const newEvent = await eventsService.create(eventData);
       
       set((state) => ({
         events: [newEvent, ...state.events],
@@ -78,7 +78,7 @@ export const useEventsStore = create((set) => ({
 
       return { success: true, data: newEvent };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Error al crear evento';
+      const errorMessage = error.response?.data?.detail || 'Error al crear evento';
       set({ 
         loading: false, 
         error: errorMessage 
@@ -91,7 +91,7 @@ export const useEventsStore = create((set) => ({
     try {
       set({ loading: true, error: null });
       
-      const updatedEvent = await apiService.events.update(id, eventData);
+      const updatedEvent = await eventsService.update(id, eventData);
       
       set((state) => ({
         events: state.events.map(event => 
@@ -103,7 +103,7 @@ export const useEventsStore = create((set) => ({
 
       return { success: true, data: updatedEvent };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Error al actualizar evento';
+      const errorMessage = error.response?.data?.detail || 'Error al actualizar evento';
       set({ 
         loading: false, 
         error: errorMessage 
@@ -116,7 +116,7 @@ export const useEventsStore = create((set) => ({
     try {
       set({ loading: true, error: null });
       
-      await apiService.events.delete(id);
+      await eventsService.delete(id);
       
       set((state) => ({
         events: state.events.filter(event => event.id !== id),
@@ -126,7 +126,7 @@ export const useEventsStore = create((set) => ({
 
       return { success: true };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Error al eliminar evento';
+      const errorMessage = error.response?.data?.detail || 'Error al eliminar evento';
       set({ 
         loading: false, 
         error: errorMessage 
@@ -139,17 +139,21 @@ export const useEventsStore = create((set) => ({
     try {
       set({ loading: true, error: null, searchQuery: query });
       
-      const response = await apiService.events.search(query);
+      const events = await eventsService.search(query);
       
       set({
-        events: response.events || response,
-        pagination: { currentPage: 1, totalPages: 1, total: response.length || 0 },
+        events: events,
+        pagination: { 
+          currentPage: 1, 
+          totalPages: 1, 
+          total: events.length 
+        },
         loading: false,
       });
 
       return { success: true };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Error en la búsqueda';
+      const errorMessage = error.response?.data?.detail || 'Error en la búsqueda';
       set({ 
         loading: false, 
         error: errorMessage 

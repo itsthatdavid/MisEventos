@@ -1,20 +1,18 @@
 # app/services/auth_service.py
 
 from typing import Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlmodel import select
 
 from app.models.user import User
-# Asumimos que tienes schemas definidos para la creación de usuarios
-# y un contexto de passlib en core.security
-from app.schemas.user_schemas import UserCreateSchema
+from app.schemas.user_schemas import UserCreate
 from app.core.security import password_context, create_jwt_token
 
 class EmailAlreadyExistsError(Exception):
     """Excepción para cuando un email ya está registrado."""
     pass
 
-def register_new_user(db: Session, user_data: UserCreateSchema) -> User:
+def register_new_user(db: Session, user_data: UserCreate) -> User:
     """
     Orquesta el registro de un nuevo usuario.
 
@@ -24,8 +22,8 @@ def register_new_user(db: Session, user_data: UserCreateSchema) -> User:
     4. Guarda el nuevo usuario en la base de datos y hace commit.
     5. Retorna la instancia del usuario creado.
     """
-    # 1. Verificar unicidad
-    existing_user = db.exec(select(User).where(User.email == user_data.email)).first()
+    # 1. Verificar unicidad - Usando SQLAlchemy ORM
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise EmailAlreadyExistsError("Un usuario con este email ya existe.")
 
@@ -53,7 +51,8 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     4. Si la contraseña es correcta, actualiza `user.last_login` y hace commit.
     5. Retorna el objeto `User` si la autenticación es exitosa, si no, `None`.
     """
-    user = db.exec(select(User).where(User.email == email)).first()
+    # Usar SQLAlchemy ORM
+    user = db.query(User).filter(User.email == email).first()
 
     if not user or not user.is_active:
         return None

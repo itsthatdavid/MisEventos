@@ -34,7 +34,7 @@ const AuthContainer = ({ mode = 'login' }) => {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email inválido';
-    if (!formData.password || formData.password.length < 6) newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+    if (!formData.password || formData.password.length < 6) newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
     if (mode === 'register') {
       if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es requerido';
       if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Las contraseñas no coinciden';
@@ -49,7 +49,7 @@ const AuthContainer = ({ mode = 'login' }) => {
     try {
       const result = mode === 'login'
         ? await login(formData.email, formData.password)
-        : await register({ email: formData.email, password: formData.password, nombre: formData.nombre });
+        : await register({ email: formData.email, password: formData.password, name: formData.nombre });
 
       if (result.success) {
         showSuccess(mode === 'login' ? 'Bienvenido' : 'Cuenta creada exitosamente');

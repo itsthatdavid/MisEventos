@@ -1,9 +1,13 @@
 # app/services/session_service.py
 
 from sqlalchemy.orm import Session
+from sqlmodel import select # Se añade import de select
+from datetime import timedelta, datetime # CORRECCIÓN: Se añade import de timedelta y datetime
+
 from app.models.event import Event
 from app.models.session import EventSession
-from app.schemas.session_schemas import SessionCreateSchema, SessionUpdateSchema
+# CORRECCIÓN: Se usan los nombres correctos de los esquemas
+from app.schemas.session_schemas import EventSessionCreate, EventSessionUpdate
 
 class SessionConflictError(Exception):
     """Excepción para cuando hay un conflicto de horarios."""
@@ -31,11 +35,12 @@ def _check_schedule_conflict(db: Session, event: Event, new_session_time: dateti
             raise SessionConflictError(f"La sesión se solapa con otra sesión existente: {session.id}")
 
 
-def add_session_to_event(db: Session, session_data: SessionCreateSchema, event: Event) -> EventSession:
+# CORRECCIÓN: Se usa el type hint EventSessionCreate
+def add_session_to_event(db: Session, session_data: EventSessionCreate, event: Event) -> EventSession:
     """
     Añade una nueva sesión a un evento.
     """
-    _check_schedule_conflict(db, event, session_data.session_datetime, event.duration_minutes)
+    _check_schedule_conflict(db, event, session_data.session_datetime, event.duration_minutes or 60)
     
     new_session = EventSession.model_validate(session_data, update={"event_id": event.id})
     db.add(new_session)
@@ -43,7 +48,8 @@ def add_session_to_event(db: Session, session_data: SessionCreateSchema, event: 
     db.refresh(new_session)
     return new_session
 
-def update_session_details(db: Session, session: EventSession, session_update_data: SessionUpdateSchema) -> EventSession:
+# CORRECCIÓN: Se usa el type hint EventSessionUpdate
+def update_session_details(db: Session, session: EventSession, session_update_data: EventSessionUpdate) -> EventSession:
     """
     Actualiza una sesión, verificando conflictos.
     """
@@ -55,7 +61,7 @@ def update_session_details(db: Session, session: EventSession, session_update_da
             db,
             session.event, 
             update_data['session_datetime'], 
-            session.event.duration_minutes,
+            session.event.duration_minutes or 60,
             exclude_session_id=session.id
         )
 

@@ -20,6 +20,17 @@ docker-compose up -d --build
 - Backend API: http://localhost:8000/docs
 - Database: `docker-compose exec postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB}`
 
+## Development
+
+**Code changes apply automatically (hot reload configured)**
+
+```bash
+# Adding dependencies only
+docker-compose exec frontend npm install
+docker-compose exec backend poetry install
+docker-compose restart frontend  # or backend
+```
+
 ## Common Commands
 
 ```bash

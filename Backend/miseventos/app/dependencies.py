@@ -12,7 +12,7 @@ from app.core import security
 from app.models import User, Event, EventSession
 
 # Esquema de seguridad para obtener el token de la cabecera "Authorization"
-oauth2_scheme = OAuth2PasswordBearer(token_url="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def get_db() -> Generator:
     """

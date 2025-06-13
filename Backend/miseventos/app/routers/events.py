@@ -1,6 +1,5 @@
 # app/routers/events.py
-
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
@@ -16,21 +15,37 @@ router = APIRouter(
 
 # --- Event Endpoints ---
 
+@router.get("", response_model=event_schemas.EventListResponse)
+def list_events(
+    page: int = Query(1, ge=1, description="Número de página"),
+    limit: int = Query(10, ge=1, le=100, description="Eventos por página"),
+    search: Optional[str] = Query(None, description="Buscar por nombre"),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista eventos con paginación y búsqueda opcional.
+    """
+    return event_service.get_events_paginated(
+        db=db, 
+        page=page, 
+        limit=limit, 
+        search=search
+    )
+
 @router.post("", response_model=event_schemas.EventRead, status_code=status.HTTP_201_CREATED)
 def create_event(
     event_in: event_schemas.EventCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user) # Proteger ruta
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Crea un nuevo evento. Solo para usuarios autenticados.
-    (Aquí se podría añadir lógica de roles, ej. `Depends(get_current_organizer)`)
     """
     return event_service.create_event(db=db, event_data=event_in, creator=current_user)
 
 @router.get("/search", response_model=List[event_schemas.EventRead])
 def search_events(
-    q: str = Query(..., min_length=3, description="Texto de búsqueda para el nombre del evento"),
+    q: str = Query(..., min_length=3, description="Texto de búsqueda"),
     db: Session = Depends(get_db)
 ):
     """
@@ -40,7 +55,7 @@ def search_events(
 
 @router.get("/{event_id}", response_model=event_schemas.EventReadWithSessions)
 def read_event(
-    event: Event = Depends(get_event_by_id) # Usa una dependencia para obtener el evento
+    event: Event = Depends(get_event_by_id)
 ):
     """
     Obtiene los detalles de un evento específico, incluyendo sus sesiones.
@@ -56,12 +71,23 @@ def update_event(
 ):
     """
     Actualiza un evento.
-    (Aquí se debería verificar que `current_user` es el `creator` del evento).
     """
     if event.creator_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this event")
     return event_service.update_event_details(db=db, event=event, event_update_data=event_update)
 
+@router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_event(
+    event: Event = Depends(get_event_by_id),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Elimina (soft delete) un evento.
+    """
+    if event.creator_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this event")
+    event_service.delete_event(db=db, event=event)
 
 @router.post("/{event_id}/publish", response_model=event_schemas.EventRead)
 def publish_event(
@@ -80,7 +106,7 @@ def publish_event(
     except event_service.EventUpdateError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-# --- Session Endpoints (Nested under events) ---
+# --- Session Endpoints ---
 
 @router.post("/{event_id}/sessions", response_model=session_schemas.EventSessionRead, status_code=status.HTTP_201_CREATED)
 def add_session_to_event(

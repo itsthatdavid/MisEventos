@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { apiService } from '../services/apiService';
+import { authService } from '../services/auth.service';
 import { setAuthToken } from '../services/api';
 
 export const useAuthStore = create(
@@ -18,11 +18,16 @@ export const useAuthStore = create(
         try {
           set({ loading: true, error: null });
           
-          const response = await apiService.auth.login(email, password);
-          const { user, token } = response;
+          // Backend retorna: {access_token: "...", token_type: "bearer"}
+          const response = await authService.login(email, password);
+          const token = response.access_token;
           
           // Set token in API service
           setAuthToken(token);
+          
+          // Para obtener los datos del usuario, necesitamos un endpoint adicional
+          // Por ahora, usamos datos básicos del email
+          const user = { email, nombre: email.split('@')[0] };
           
           set({
             user,
@@ -34,7 +39,7 @@ export const useAuthStore = create(
 
           return { success: true };
         } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Error de autenticación';
+          const errorMessage = error.response?.data?.detail || 'Error de autenticación';
           set({ 
             loading: false, 
             error: errorMessage,
@@ -48,22 +53,19 @@ export const useAuthStore = create(
         try {
           set({ loading: true, error: null });
           
-          const response = await apiService.auth.register(userData);
-          const { user, token } = response;
+          // Backend retorna el usuario creado directamente
+          const user = await authService.register(userData);
           
-          setAuthToken(token);
+          // Después del registro, hacer login automático
+          const loginResult = await get().login(userData.email, userData.password);
           
-          set({
-            user,
-            token,
-            isAuthenticated: true,
-            loading: false,
-            error: null,
-          });
-
-          return { success: true };
+          if (loginResult.success) {
+            return { success: true };
+          } else {
+            throw new Error('Error en login automático después del registro');
+          }
         } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Error en el registro';
+          const errorMessage = error.response?.data?.detail || 'Error en el registro';
           set({ 
             loading: false, 
             error: errorMessage 
@@ -74,8 +76,7 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          // Try to call logout endpoint
-          await apiService.auth.logout();
+          await authService.logout();
         } catch (error) {
           console.warn('Logout endpoint failed, continuing with client logout');
         } finally {
