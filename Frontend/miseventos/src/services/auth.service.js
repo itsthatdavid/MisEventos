@@ -16,12 +16,11 @@ export const authService = {
   },
 
   register: async (userData) => {
-    // Mapear 'name' a 'nombre' para el backend
     const backendData = {
       ...userData,
-      nombre: userData.name, // Backend espera 'nombre'
+      nombre: userData.name,
     };
-    delete backendData.name; // Remover el campo 'name'
+    delete backendData.name;
     
     const response = await api.post('/auth/register', backendData);
     return response.data;
@@ -33,7 +32,6 @@ export const authService = {
   },
 
   logout: async () => {
-    // El backend no tiene endpoint de logout, solo limpiar token
     return Promise.resolve();
   },
 };
